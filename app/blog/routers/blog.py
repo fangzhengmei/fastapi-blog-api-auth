@@ -17,6 +17,11 @@ def all(db: Session = Depends(get_db), current_user: Optional[models.User] = Dep
     return blog.get_all(db, current_user)
 
 
+@router.get('/drafts', response_model=List[schemas.ShowBlog])
+def get_drafts(db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
+    return blog.get_drafts(db, current_user)
+
+
 @router.post('/', status_code=status.HTTP_201_CREATED,)
 def create(request: schemas.Blog, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
     return blog.create(request, db, current_user)

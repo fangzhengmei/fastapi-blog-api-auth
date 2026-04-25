@@ -14,6 +14,14 @@ def get_all(db: Session, current_user: Optional[models.User]):
     return blogs
 
 
+def get_drafts(db: Session, current_user: models.User):
+    blogs = db.query(models.Blog).filter(
+        models.Blog.user_id == current_user.id,
+        models.Blog.is_published == 0
+    ).all()
+    return blogs
+
+
 def create(request: schemas.Blog, db: Session, current_user: models.User):
     is_published = 1 if request.is_published else 0
     new_blog = models.Blog(
