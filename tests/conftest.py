@@ -47,6 +47,11 @@ def test_db():
 
 
 @pytest.fixture(scope="function")
+def test_db_engine():
+    return engine
+
+
+@pytest.fixture(scope="function")
 def client(test_db):
     with TestClient(app) as c:
         yield c
