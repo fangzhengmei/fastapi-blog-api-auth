@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
 from .. import models, schemas
 from fastapi import HTTPException, status
@@ -192,10 +192,16 @@ def get_blogs_by_tag(
             detail="Tag not found"
         )
     
-    total = len(tag.blogs)
+    total_query = db.query(models.Blog).join(models.Blog.tags).filter(models.Tag.id == tag.id)
+    total = total_query.count()
+    
+    blogs_query = db.query(models.Blog).options(
+        selectinload(models.Blog.tags),
+        selectinload(models.Blog.creator)
+    ).join(models.Blog.tags).filter(models.Tag.id == tag.id)
+    
     start = (page - 1) * per_page
-    end = start + per_page
-    blogs = tag.blogs[start:end]
+    blogs = blogs_query.order_by(models.Blog.created_at.desc()).offset(start).limit(per_page).all()
     
     return {
         'tag': tag,

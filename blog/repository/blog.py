@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_
 from .. import models, schemas
 from ..repository import tag as tag_repository
@@ -38,7 +38,10 @@ def get_all(
     sort_column = sort_column.asc() if order == 'asc' else sort_column.desc()
     
     total = query.count()
-    blogs = query.order_by(sort_column).offset((page - 1) * per_page).limit(per_page).all()
+    blogs = query.options(
+        selectinload(models.Blog.tags),
+        selectinload(models.Blog.creator)
+    ).order_by(sort_column).offset((page - 1) * per_page).limit(per_page).all()
     
     return {
         'items': blogs,
@@ -149,12 +152,18 @@ def update(
     
     db.commit()
     
-    updated_blog = db.query(models.Blog).filter(models.Blog.id == id).first()
+    updated_blog = db.query(models.Blog).options(
+        selectinload(models.Blog.tags),
+        selectinload(models.Blog.creator)
+    ).filter(models.Blog.id == id).first()
     return updated_blog
 
 
 def show(id: int, db: Session):
-    blog = db.query(models.Blog).filter(models.Blog.id == id).first()
+    blog = db.query(models.Blog).options(
+        selectinload(models.Blog.tags),
+        selectinload(models.Blog.creator)
+    ).filter(models.Blog.id == id).first()
     if not blog:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -191,8 +200,12 @@ def add_tags_to_blog(
             blog.tags.append(tag)
     
     db.commit()
-    db.refresh(blog)
-    return blog
+    
+    updated_blog = db.query(models.Blog).options(
+        selectinload(models.Blog.tags),
+        selectinload(models.Blog.creator)
+    ).filter(models.Blog.id == blog_id).first()
+    return updated_blog
 
 
 def remove_tags_from_blog(
@@ -223,5 +236,9 @@ def remove_tags_from_blog(
             blog.tags.remove(tag)
     
     db.commit()
-    db.refresh(blog)
-    return blog
+    
+    updated_blog = db.query(models.Blog).options(
+        selectinload(models.Blog.tags),
+        selectinload(models.Blog.creator)
+    ).filter(models.Blog.id == blog_id).first()
+    return updated_blog
