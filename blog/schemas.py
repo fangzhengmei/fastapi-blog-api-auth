@@ -29,10 +29,6 @@ class Tag(BaseModel):
         from_attributes = True
 
 
-class TagWithBlogs(Tag):
-    blogs: List['ShowBlog'] = []
-
-
 class BlogBase(BaseModel):
     title: str
     body: str
@@ -44,8 +40,8 @@ class BlogCreate(BlogBase):
 
 
 class BlogUpdate(BaseModel):
-    title: Optional[str] = None
-    body: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=1, description="博客标题")
+    body: Optional[str] = Field(None, min_length=1, description="博客内容")
     tags: Optional[List[str]] = Field(None, description="标签名称列表（会替换现有标签）")
     tag_ids: Optional[List[int]] = Field(None, description="标签ID列表（会替换现有标签）")
 
@@ -65,36 +61,33 @@ class ShowUser(BaseModel):
     id: int
     name: str
     email: str
-    blogs: List['ShowBlog'] = []
 
     class Config:
         from_attributes = True
 
 
-class ShowBlog(BaseModel):
+class ShowUserWithBlogs(ShowUser):
+    blogs: List['ShowBlogBase'] = []
+
+
+class ShowBlogBase(BaseModel):
     id: int
     title: str
     body: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    creator: ShowUser
-    tags: List[Tag] = []
 
     class Config:
         from_attributes = True
 
 
-class BlogList(BaseModel):
-    id: int
-    title: str
-    body: str
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+class ShowBlog(ShowBlogBase):
     creator: ShowUser
     tags: List[Tag] = []
 
-    class Config:
-        from_attributes = True
+
+class BlogList(ShowBlog):
+    pass
 
 
 class Login(BaseModel):
@@ -118,12 +111,41 @@ class PaginatedResponse(BaseModel):
     per_page: int
     total_pages: int
 
+    class Config:
+        from_attributes = True
+
+
+class PaginatedBlogResponse(PaginatedResponse):
+    items: List[ShowBlog]
+
+
+class PaginatedTagResponse(PaginatedResponse):
+    items: List[Tag]
+
+
+class PopularTag(BaseModel):
+    id: int
+    name: str
+    slug: str
+    description: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    blog_count: int
+
+    class Config:
+        from_attributes = True
+
 
 class TagBlogsResponse(BaseModel):
     tag: Tag
     blogs: List[ShowBlog]
     total: int
+    page: int
+    per_page: int
+    total_pages: int
+
+    class Config:
+        from_attributes = True
 
 
-TagWithBlogs.model_rebuild()
-ShowUser.model_rebuild()
+ShowUserWithBlogs.model_rebuild()

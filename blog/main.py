@@ -12,6 +12,6 @@ def root():
     return {"message": "FastAPI Blog API is running 🚀"}
 
 app.include_router(authentication.router, prefix="/auth", tags=["Auth"])
-app.include_router(blog.router, prefix="/blog", tags=["Blog"])
-app.include_router(user.router, prefix="/user", tags=["User"])
-app.include_router(tag.router, prefix="/tags", tags=["Tags"])
+app.include_router(blog.router, tags=["Blog"])
+app.include_router(user.router, tags=["User"])
+app.include_router(tag.router, tags=["Tags"])

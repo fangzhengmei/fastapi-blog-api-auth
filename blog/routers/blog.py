@@ -12,7 +12,7 @@ router = APIRouter(
 get_db = database.get_db
 
 
-@router.get('/', response_model=dict)
+@router.get('/', response_model=schemas.PaginatedBlogResponse)
 def all(
     page: int = Query(1, ge=1, description="页码"),
     per_page: int = Query(10, ge=1, le=100, description="每页数量"),
@@ -67,7 +67,7 @@ def show(
 @router.post('/{blog_id}/tags', response_model=schemas.ShowBlog)
 def add_tags(
     blog_id: int,
-    tag_names: List[str],
+    tag_names: List[str] = Query(..., description="标签名称列表"),
     db: Session = Depends(get_db),
     current_user: schemas.TokenData = Depends(oauth2.get_current_user)
 ):
@@ -77,7 +77,7 @@ def add_tags(
 @router.delete('/{blog_id}/tags', response_model=schemas.ShowBlog)
 def remove_tags(
     blog_id: int,
-    tag_ids: List[int],
+    tag_ids: List[int] = Query(..., description="标签ID列表"),
     db: Session = Depends(get_db),
     current_user: schemas.TokenData = Depends(oauth2.get_current_user)
 ):

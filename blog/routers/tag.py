@@ -12,7 +12,7 @@ router = APIRouter(
 get_db = database.get_db
 
 
-@router.get('/', response_model=dict)
+@router.get('/', response_model=schemas.PaginatedTagResponse)
 def get_all_tags(
     page: int = Query(1, ge=1, description="页码"),
     per_page: int = Query(10, ge=1, le=100, description="每页数量"),
@@ -23,7 +23,7 @@ def get_all_tags(
     return tag_repository.get_all(db, page, per_page, sort_by, order)
 
 
-@router.get('/popular', response_model=List[dict])
+@router.get('/popular', response_model=List[schemas.PopularTag])
 def get_popular_tags(
     limit: int = Query(10, ge=1, le=50, description="返回热门标签数量"),
     db: Session = Depends(get_db)
@@ -84,7 +84,7 @@ def delete_tag(
     return tag_repository.destroy(tag_id, db)
 
 
-@router.get('/{tag_id}/blogs', response_model=dict)
+@router.get('/{tag_id}/blogs', response_model=schemas.TagBlogsResponse)
 def get_blogs_by_tag_id(
     tag_id: int,
     page: int = Query(1, ge=1),
@@ -99,7 +99,7 @@ def get_blogs_by_tag_id(
     )
 
 
-@router.get('/slug/{slug}/blogs', response_model=dict)
+@router.get('/slug/{slug}/blogs', response_model=schemas.TagBlogsResponse)
 def get_blogs_by_tag_slug(
     slug: str,
     page: int = Query(1, ge=1),
