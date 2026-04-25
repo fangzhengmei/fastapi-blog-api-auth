@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, status, HTTPException
 from blog import schemas, database, models, oauth2
 from sqlalchemy.orm import Session
@@ -13,7 +13,7 @@ get_db = database.get_db
 
 
 @router.get('/', response_model=List[schemas.ShowBlog])
-def all(db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
+def all(db: Session = Depends(get_db), current_user: Optional[models.User] = Depends(oauth2.get_current_user_optional)):
     return blog.get_all(db, current_user)
 
 
@@ -33,7 +33,7 @@ def update(id: int, request: schemas.Blog, db: Session = Depends(get_db), curren
 
 
 @router.get('/{id}', status_code=200, response_model=schemas.ShowBlog)
-def show(id: int, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
+def show(id: int, db: Session = Depends(get_db), current_user: Optional[models.User] = Depends(oauth2.get_current_user_optional)):
     return blog.show(id, db, current_user)
 
 

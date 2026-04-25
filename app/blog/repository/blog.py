@@ -1,12 +1,16 @@
+from typing import Optional
 from sqlalchemy.orm import Session
 from blog import models, schemas
 from fastapi import HTTPException, status
 
 
-def get_all(db: Session, current_user: models.User):
-    blogs = db.query(models.Blog).filter(
-        (models.Blog.is_published == 1) | (models.Blog.user_id == current_user.id)
-    ).all()
+def get_all(db: Session, current_user: Optional[models.User]):
+    if current_user is None:
+        blogs = db.query(models.Blog).filter(models.Blog.is_published == 1).all()
+    else:
+        blogs = db.query(models.Blog).filter(
+            (models.Blog.is_published == 1) | (models.Blog.user_id == current_user.id)
+        ).all()
     return blogs
 
 
@@ -62,15 +66,16 @@ def update(id: int, request: schemas.Blog, db: Session, current_user: models.Use
     return 'updated'
 
 
-def show(id: int, db: Session, current_user: models.User):
+def show(id: int, db: Session, current_user: Optional[models.User]):
     blog = db.query(models.Blog).filter(models.Blog.id == id).first()
     if not blog:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Blog with the id {id} is not available")
     
-    if not blog.is_published and blog.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Blog with the id {id} is not available")
+    if not blog.is_published:
+        if current_user is None or blog.user_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"Blog with the id {id} is not available")
     return blog
 
 

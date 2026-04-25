@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from blog import token, database, models
@@ -19,3 +20,26 @@ def get_current_user(data: str = Depends(oauth2_scheme), db: Session = Depends(g
     if not user:
         raise credentials_exception
     return user
+
+
+def get_current_user_optional(
+    data: Optional[str] = Depends(OAuth2PasswordBearer(tokenUrl="login", auto_error=False)),
+    db: Session = Depends(get_db)
+):
+    if data is None:
+        return None
+    
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        token_data = token.verify_token(data, credentials_exception)
+        user = db.query(models.User).filter(models.User.email == token_data.email).first()
+        if not user:
+            return None
+        return user
+    except Exception:
+        return None
