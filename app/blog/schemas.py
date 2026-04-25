@@ -7,6 +7,7 @@ class BlogBase(BaseModel):
     body: str
 
 class Blog(BlogBase):
+    is_published: bool = False
     class Config():
         orm_mode = True
 
@@ -23,8 +24,10 @@ class ShowUser(BaseModel):
         orm_mode = True
 
 class ShowBlog(BaseModel):
+    id: int
     title: str
-    body:str
+    body: str
+    is_published: bool
     creator: ShowUser
 
     class Config():
