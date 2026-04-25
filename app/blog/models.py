@@ -44,4 +44,4 @@ class Comment(Base):
 
     blog = relationship("Blog", back_populates="comments")
     commenter = relationship("User", back_populates="comments")
-    replies = relationship("Comment", backref="parent", remote_side=[id])
+    parent = relationship("Comment", remote_side=[id], backref="replies")
