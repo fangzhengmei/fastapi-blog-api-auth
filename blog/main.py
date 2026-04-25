@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from . import models
 from .database import engine
-from .routers import blog, user, authentication
+from .routers import blog, user, authentication, tag
 
 app = FastAPI()
 
@@ -14,3 +14,4 @@ def root():
 app.include_router(authentication.router, prefix="/auth", tags=["Auth"])
 app.include_router(blog.router, prefix="/blog", tags=["Blog"])
 app.include_router(user.router, prefix="/user", tags=["User"])
+app.include_router(tag.router, prefix="/tags", tags=["Tags"])
