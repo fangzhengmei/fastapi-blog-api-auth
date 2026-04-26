@@ -584,5 +584,92 @@ class TestUserProfileFollowCounts:
         
         assert data["id"] == self.user1_id
         assert data["name"] == "User One"
-        assert data["email"] == "user1@example.com"
         assert "blogs" in data
+    
+    def test_user_profile_email_visible_to_owner(self):
+        response = client.get(
+            f"/user/{self.user1_id}",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["email"] == "user1@example.com"
+    
+    def test_user_profile_email_hidden_from_other_users(self):
+        response = client.get(
+            f"/user/{self.user2_id}",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["id"] == self.user2_id
+        assert data["name"] == "User Two"
+        assert data["email"] is None
+    
+    def test_user_profile_email_hidden_from_guest(self):
+        response = client.get(
+            f"/user/{self.user1_id}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["id"] == self.user1_id
+        assert data["name"] == "User One"
+        assert data["email"] is None
+    
+    def test_followers_list_does_not_show_email(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            f"/follow/followers/{self.user2_id}",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["count"] == 1
+        assert len(data["followers"]) == 1
+        
+        follower = data["followers"][0]
+        assert follower["id"] == self.user1_id
+        assert follower["name"] == "User One"
+        assert "email" not in follower
+    
+    def test_following_list_does_not_show_email(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            f"/follow/following/{self.user1_id}",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["count"] == 1
+        assert len(data["following"]) == 1
+        
+        following = data["following"][0]
+        assert following["id"] == self.user2_id
+        assert following["name"] == "User Two"
+        assert "email" not in following
+    
+    def test_guest_can_view_user_profile_without_auth(self):
+        response = client.get(
+            f"/user/{self.user2_id}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["id"] == self.user2_id
+        assert data["name"] == "User Two"
+        assert data["email"] is None
+        assert "followers_count" in data
+        assert "following_count" in data

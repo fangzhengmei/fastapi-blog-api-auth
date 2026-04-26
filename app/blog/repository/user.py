@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from blog import models, schemas
@@ -14,7 +15,7 @@ def create(request: schemas.User, db: Session):
     return new_user
 
 
-def show(id: int, db: Session):
+def show(id: int, db: Session, requester_id: Optional[int] = None):
     user = db.query(models.User).filter(models.User.id == id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -28,10 +29,12 @@ def show(id: int, db: Session):
         models.Follow.follower_id == id
     ).scalar()
     
+    is_owner = requester_id is not None and requester_id == id
+    
     return schemas.UserProfile(
         id=user.id,
         name=user.name,
-        email=user.email,
+        email=user.email if is_owner else None,
         followers_count=followers_count or 0,
         following_count=following_count or 0,
         blogs=user.blogs

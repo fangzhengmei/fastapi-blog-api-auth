@@ -93,12 +93,12 @@ def get_followers(user_id: int, db: Session):
     ).all()
     
     follower_summaries = [
-        schemas.UserSummary(id=f.id, name=f.name, email=f.email)
+        schemas.UserSummary(id=f.id, name=f.name)
         for f in followers
     ]
     
     return schemas.FollowersResponse(
-        user=schemas.UserSummary(id=user.id, name=user.name, email=user.email),
+        user=schemas.UserSummary(id=user.id, name=user.name),
         count=len(follower_summaries),
         followers=follower_summaries
     )
@@ -119,12 +119,12 @@ def get_following(user_id: int, db: Session):
     ).all()
     
     following_summaries = [
-        schemas.UserSummary(id=f.id, name=f.name, email=f.email)
+        schemas.UserSummary(id=f.id, name=f.name)
         for f in following
     ]
     
     return schemas.FollowingResponse(
-        user=schemas.UserSummary(id=user.id, name=user.name, email=user.email),
+        user=schemas.UserSummary(id=user.id, name=user.name),
         count=len(following_summaries),
         following=following_summaries
     )

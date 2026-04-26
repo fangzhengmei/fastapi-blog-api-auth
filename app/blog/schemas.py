@@ -27,7 +27,7 @@ class ShowUser(BaseModel):
 class UserProfile(BaseModel):
     id: int
     name: str
-    email: str
+    email: Optional[str] = None
     followers_count: int = 0
     following_count: int = 0
     blogs: List[Blog] = []
@@ -61,7 +61,6 @@ class TokenData(BaseModel):
 class UserSummary(BaseModel):
     id: int
     name: str
-    email: str
     
     class Config():
         orm_mode = True
