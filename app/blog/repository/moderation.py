@@ -41,7 +41,15 @@ def moderate_blog(
     db.refresh(moderation_log)
     db.refresh(blog)
 
-    return moderation_log
+    return schemas.ModerationLogResponse(
+        id=moderation_log.id,
+        blog_id=moderation_log.blog_id,
+        moderator_id=moderation_log.moderator_id,
+        moderator_name=current_user.name,
+        decision=moderation_log.decision.value,
+        comment=moderation_log.comment,
+        created_at=moderation_log.created_at
+    )
 
 
 def get_moderation_logs(
