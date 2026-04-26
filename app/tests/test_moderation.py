@@ -508,3 +508,200 @@ class TestModerationEdgeCases:
             headers={"Authorization": f"Bearer {user_token}"}
         )
         assert blog_response.json()["status"] == "approved"
+
+
+class TestModerationCommentValidation:
+    MAX_COMMENT_LENGTH = 500
+
+    def test_comment_with_max_length_accepted(self, client):
+        create_test_user("user_comment1@test.com", "User Comment 1")
+        create_test_user("mod_comment1@test.com", "Mod Comment 1", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_comment1@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Test Blog", "body": "Content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_comment1@test.com")
+        max_comment = "A" * self.MAX_COMMENT_LENGTH
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": max_comment},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert moderate_response.status_code == 200
+        assert moderate_response.json()["comment"] == max_comment
+
+    def test_comment_exceeding_max_length_rejected(self, client):
+        create_test_user("user_comment2@test.com", "User Comment 2")
+        create_test_user("mod_comment2@test.com", "Mod Comment 2", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_comment2@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Test Blog", "body": "Content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_comment2@test.com")
+        too_long_comment = "A" * (self.MAX_COMMENT_LENGTH + 1)
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": too_long_comment},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert moderate_response.status_code == 422
+        assert "500" in moderate_response.text or "length" in moderate_response.text.lower()
+
+    def test_empty_comment_treated_as_none(self, client):
+        create_test_user("user_comment3@test.com", "User Comment 3")
+        create_test_user("mod_comment3@test.com", "Mod Comment 3", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_comment3@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Test Blog", "body": "Content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_comment3@test.com")
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": ""},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert moderate_response.status_code == 200
+        assert moderate_response.json()["comment"] is None
+
+    def test_whitespace_only_comment_treated_as_none(self, client):
+        create_test_user("user_comment4@test.com", "User Comment 4")
+        create_test_user("mod_comment4@test.com", "Mod Comment 4", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_comment4@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Test Blog", "body": "Content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_comment4@test.com")
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": "   \t\n  "},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert moderate_response.status_code == 200
+        assert moderate_response.json()["comment"] is None
+
+    def test_comment_with_leading_trailing_whitespace_is_stripped(self, client):
+        create_test_user("user_comment5@test.com", "User Comment 5")
+        create_test_user("mod_comment5@test.com", "Mod Comment 5", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_comment5@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Test Blog", "body": "Content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_comment5@test.com")
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": "  Good content!  "},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert moderate_response.status_code == 200
+        assert moderate_response.json()["comment"] == "Good content!"
+
+    def test_no_comment_field_accepted(self, client):
+        create_test_user("user_comment6@test.com", "User Comment 6")
+        create_test_user("mod_comment6@test.com", "Mod Comment 6", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_comment6@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Test Blog", "body": "Content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_comment6@test.com")
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved"},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert moderate_response.status_code == 200
+        assert moderate_response.json()["comment"] is None
+
+    def test_null_comment_accepted(self, client):
+        create_test_user("user_comment7@test.com", "User Comment 7")
+        create_test_user("mod_comment7@test.com", "Mod Comment 7", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_comment7@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Test Blog", "body": "Content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_comment7@test.com")
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": None},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert moderate_response.status_code == 200
+        assert moderate_response.json()["comment"] is None
+
+    def test_special_characters_in_comment_accepted(self, client):
+        create_test_user("user_comment8@test.com", "User Comment 8")
+        create_test_user("mod_comment8@test.com", "Mod Comment 8", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_comment8@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Test Blog", "body": "Content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_comment8@test.com")
+        special_comment = "Great post! 👍 Contains: @#$%^&*()_+{}[]|\\:;'\"<>,.?/~`"
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": special_comment},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert moderate_response.status_code == 200
+        assert moderate_response.json()["comment"] == special_comment
+
+    def test_normal_comment_with_rejection(self, client):
+        create_test_user("user_comment9@test.com", "User Comment 9")
+        create_test_user("mod_comment9@test.com", "Mod Comment 9", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_comment9@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Test Blog", "body": "Content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_comment9@test.com")
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "rejected", "comment": "Please improve the content quality."},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert moderate_response.status_code == 200
+        assert moderate_response.json()["decision"] == "rejected"
+        assert moderate_response.json()["comment"] == "Please improve the content quality."

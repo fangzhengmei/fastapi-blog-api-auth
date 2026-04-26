@@ -1,7 +1,9 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import datetime
 from enum import Enum
+
+MAX_COMMENT_LENGTH = 500
 
 
 class UserRole(str, Enum):
@@ -88,6 +90,20 @@ class ModerationLogResponse(BaseModel):
 class ModerationRequest(BaseModel):
     decision: ModerationDecision
     comment: Optional[str] = None
+
+    @field_validator('comment')
+    @classmethod
+    def validate_comment(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not isinstance(v, str):
+            raise ValueError('Comment must be a string')
+        if len(v) > MAX_COMMENT_LENGTH:
+            raise ValueError(f'Comment must be at most {MAX_COMMENT_LENGTH} characters')
+        stripped = v.strip()
+        if not stripped:
+            return None
+        return stripped
 
 
 class Login(BaseModel):

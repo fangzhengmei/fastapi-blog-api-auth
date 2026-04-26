@@ -4,6 +4,8 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 
+MAX_COMMENT_LENGTH = 500
+
 
 class UserRole(str, enum.Enum):
     USER = "user"
@@ -58,7 +60,7 @@ class ModerationLog(Base):
     blog_id = Column(Integer, ForeignKey('blogs.id'))
     moderator_id = Column(Integer, ForeignKey('users.id'))
     decision = Column(Enum(ModerationDecision))
-    comment = Column(String, nullable=True)
+    comment = Column(String(MAX_COMMENT_LENGTH), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     blog = relationship("Blog", back_populates="moderation_logs")
