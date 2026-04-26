@@ -1,8 +1,9 @@
 from typing import List
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Query
 from blog import schemas, database, models, oauth2
 from sqlalchemy.orm import Session
 from blog.repository import blog
+from blog.repository import follow as follow_repository
 
 router = APIRouter(
     prefix="/blog",
@@ -35,3 +36,18 @@ def update(id: int, request: schemas.Blog, db: Session = Depends(get_db), curren
 @router.get('/{id}', status_code=200, response_model=schemas.ShowBlog)
 def show(id: int, db: Session = Depends(get_db), current_user: schemas.User = Depends(oauth2.get_current_user)):
     return blog.show(id, db)
+
+
+@router.get('/feed/following', response_model=List[schemas.ShowBlog])
+def get_following_blogs(
+    skip: int = Query(0, ge=0, description="Number of items to skip"),
+    limit: int = Query(10, ge=1, le=100, description="Maximum number of items to return"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    return follow_repository.get_following_blogs(
+        user_id=current_user.id,
+        db=db,
+        skip=skip,
+        limit=limit
+    )

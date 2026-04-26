@@ -1,6 +1,16 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from blog.database import Base
 from sqlalchemy.orm import relationship
+from datetime import datetime
+
+
+class Follow(Base):
+    __tablename__ = 'follows'
+
+    id = Column(Integer, primary_key=True, index=True)
+    follower_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    followed_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class Blog(Base):
@@ -23,3 +33,11 @@ class User(Base):
     password = Column(String)
 
     blogs = relationship('Blog', back_populates="creator")
+    
+    followers = relationship(
+        "User",
+        secondary="follows",
+        primaryjoin="User.id == Follow.followed_id",
+        secondaryjoin="User.id == Follow.follower_id",
+        backref="following"
+    )

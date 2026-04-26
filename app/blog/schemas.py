@@ -1,5 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel
+from datetime import datetime
 
 
 class BlogBase(BaseModel):
@@ -43,3 +44,29 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+
+class UserSummary(BaseModel):
+    id: int
+    name: str
+    email: str
+    
+    class Config():
+        orm_mode = True
+
+
+class FollowResponse(BaseModel):
+    message: str
+    is_following: bool
+
+
+class FollowersResponse(BaseModel):
+    user: UserSummary
+    count: int
+    followers: List[UserSummary]
+
+
+class FollowingResponse(BaseModel):
+    user: UserSummary
+    count: int
+    following: List[UserSummary]
