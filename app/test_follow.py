@@ -204,6 +204,34 @@ class TestFollowSystem:
         following_names = [f["name"] for f in data["following"]]
         assert "User Two" in following_names
         assert "User Three" in following_names
+    
+    def test_unfollow_nonexistent_user_fails(self):
+        response = client.post(
+            "/follow/9999/unfollow",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 404
+    
+    def test_is_following_nonexistent_user_fails(self):
+        response = client.get(
+            "/follow/is-following/9999",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 404
+    
+    def test_get_followers_nonexistent_user_fails(self):
+        response = client.get(
+            "/follow/followers/9999",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 404
+    
+    def test_get_following_nonexistent_user_fails(self):
+        response = client.get(
+            "/follow/following/9999",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 404
 
 
 class TestFollowingBlogsFeed:
@@ -328,3 +356,86 @@ class TestFollowingBlogsFeed:
             headers=self.headers_user1
         )
         assert len(response.json()) == 0
+    
+    def test_get_following_blogs_skip_exceeds_count(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        client.post(
+            f"/follow/{self.user3_id}/follow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            "/blog/feed/following?skip=100&limit=10",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 200
+        assert response.json() == []
+    
+    def test_get_following_blogs_limit_exceeds_count(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        client.post(
+            f"/follow/{self.user3_id}/follow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            "/blog/feed/following?limit=100",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 200
+        assert len(response.json()) == 3
+    
+    def test_get_following_blogs_invalid_skip_negative(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            "/blog/feed/following?skip=-1",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 422
+    
+    def test_get_following_blogs_invalid_limit_zero(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            "/blog/feed/following?limit=0",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 422
+    
+    def test_get_following_blogs_invalid_limit_too_large(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            "/blog/feed/following?limit=101",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 422
+    
+    def test_get_following_blogs_skip_zero(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            "/blog/feed/following?skip=0&limit=10",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 200
+        assert len(response.json()) == 2

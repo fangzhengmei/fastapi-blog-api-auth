@@ -131,6 +131,13 @@ def get_following(user_id: int, db: Session):
 
 
 def is_following(follower_id: int, followed_id: int, db: Session) -> bool:
+    user = db.query(models.User).filter(models.User.id == followed_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {followed_id} not found"
+        )
+    
     follow = db.query(models.Follow).filter(
         models.Follow.follower_id == follower_id,
         models.Follow.followed_id == followed_id
