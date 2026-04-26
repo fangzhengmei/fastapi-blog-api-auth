@@ -439,3 +439,150 @@ class TestFollowingBlogsFeed:
         )
         assert response.status_code == 200
         assert len(response.json()) == 2
+
+
+class TestUserProfileFollowCounts:
+    
+    def setup_method(self):
+        Base.metadata.create_all(bind=engine)
+        db = TestingSessionLocal()
+        
+        self.user1_id = create_test_user(db, "User One", "user1@example.com", "password1")
+        self.user2_id = create_test_user(db, "User Two", "user2@example.com", "password2")
+        self.user3_id = create_test_user(db, "User Three", "user3@example.com", "password3")
+        
+        db.close()
+        
+        self.headers_user1 = get_auth_headers("user1@example.com", "password1")
+        self.headers_user2 = get_auth_headers("user2@example.com", "password2")
+        self.headers_user3 = get_auth_headers("user3@example.com", "password3")
+    
+    def teardown_method(self):
+        Base.metadata.drop_all(bind=engine)
+    
+    def test_user_profile_has_followers_and_following_counts(self):
+        response = client.get(
+            f"/user/{self.user1_id}",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert "followers_count" in data
+        assert "following_count" in data
+        assert data["followers_count"] == 0
+        assert data["following_count"] == 0
+    
+    def test_user_profile_followers_count_increments_when_followed(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user3
+        )
+        
+        response = client.get(
+            f"/user/{self.user2_id}",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["followers_count"] == 2
+        assert data["following_count"] == 0
+    
+    def test_user_profile_following_count_increments_when_following(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        client.post(
+            f"/follow/{self.user3_id}/follow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            f"/user/{self.user1_id}",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["followers_count"] == 0
+        assert data["following_count"] == 2
+    
+    def test_user_profile_followers_count_decrements_when_unfollowed(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user3
+        )
+        
+        response = client.get(
+            f"/user/{self.user2_id}",
+            headers=self.headers_user1
+        )
+        assert response.json()["followers_count"] == 2
+        
+        client.post(
+            f"/follow/{self.user2_id}/unfollow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            f"/user/{self.user2_id}",
+            headers=self.headers_user1
+        )
+        assert response.json()["followers_count"] == 1
+    
+    def test_user_profile_following_count_decrements_when_unfollowing(self):
+        client.post(
+            f"/follow/{self.user2_id}/follow",
+            headers=self.headers_user1
+        )
+        client.post(
+            f"/follow/{self.user3_id}/follow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            f"/user/{self.user1_id}",
+            headers=self.headers_user1
+        )
+        assert response.json()["following_count"] == 2
+        
+        client.post(
+            f"/follow/{self.user2_id}/unfollow",
+            headers=self.headers_user1
+        )
+        
+        response = client.get(
+            f"/user/{self.user1_id}",
+            headers=self.headers_user1
+        )
+        assert response.json()["following_count"] == 1
+    
+    def test_user_profile_nonexistent_user_returns_404(self):
+        response = client.get(
+            "/user/9999",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 404
+    
+    def test_user_profile_contains_basic_info(self):
+        response = client.get(
+            f"/user/{self.user1_id}",
+            headers=self.headers_user1
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["id"] == self.user1_id
+        assert data["name"] == "User One"
+        assert data["email"] == "user1@example.com"
+        assert "blogs" in data
