@@ -354,3 +354,157 @@ class TestBlogOwnership:
             headers={"Authorization": f"Bearer {hacker_token}"}
         )
         assert delete_response.status_code == 403
+
+
+class TestModerationEdgeCases:
+    def test_cannot_moderate_already_approved_blog(self, client):
+        create_test_user("user_edge1@test.com", "User Edge 1")
+        create_test_user("mod_edge1@test.com", "Mod Edge 1", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_edge1@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Blog to Approve Twice", "body": "Content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_edge1@test.com")
+        first_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": "First approval"},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert first_response.status_code == 200
+        assert first_response.json()["decision"] == "approved"
+
+        second_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "rejected", "comment": "Trying to reject"},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert second_response.status_code == 400
+        assert "not pending" in second_response.json()["detail"].lower()
+
+    def test_cannot_moderate_already_rejected_blog(self, client):
+        create_test_user("user_edge2@test.com", "User Edge 2")
+        create_test_user("mod_edge2@test.com", "Mod Edge 2", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_edge2@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Blog to Reject Twice", "body": "Content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_edge2@test.com")
+        first_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "rejected", "comment": "First rejection"},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert first_response.status_code == 200
+        assert first_response.json()["decision"] == "rejected"
+
+        second_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": "Trying to approve"},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert second_response.status_code == 400
+        assert "not pending" in second_response.json()["detail"].lower()
+
+    def test_moderator_cannot_moderate_own_blog(self, client):
+        create_test_user("mod_edge3@test.com", "Mod Edge 3", models.UserRole.MODERATOR)
+
+        mod_token = get_auth_token(client, "mod_edge3@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Moderator's Own Blog", "body": "My own post"},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        blog_id = create_response.json()["id"]
+        assert create_response.status_code == 201
+        assert create_response.json()["status"] == "pending"
+
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": "Trying to approve my own post"},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert moderate_response.status_code == 403
+        assert "cannot moderate your own" in moderate_response.json()["detail"].lower()
+
+        blog_response = client.get(
+            f"/blog/{blog_id}",
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert blog_response.json()["status"] == "pending"
+
+    def test_another_moderator_can_moderate_moderator_s_blog(self, client):
+        create_test_user("mod_edge4a@test.com", "Mod Edge 4A", models.UserRole.MODERATOR)
+        create_test_user("mod_edge4b@test.com", "Mod Edge 4B", models.UserRole.MODERATOR)
+
+        mod_a_token = get_auth_token(client, "mod_edge4a@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Mod A's Blog", "body": "Created by Mod A"},
+            headers={"Authorization": f"Bearer {mod_a_token}"}
+        )
+        blog_id = create_response.json()["id"]
+        assert create_response.json()["status"] == "pending"
+
+        mod_b_token = get_auth_token(client, "mod_edge4b@test.com")
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": "Approved by Mod B"},
+            headers={"Authorization": f"Bearer {mod_b_token}"}
+        )
+        assert moderate_response.status_code == 200
+        assert moderate_response.json()["decision"] == "approved"
+
+        blog_response = client.get(
+            f"/blog/{blog_id}",
+            headers={"Authorization": f"Bearer {mod_a_token}"}
+        )
+        assert blog_response.json()["status"] == "approved"
+
+    def test_rejected_blog_updated_resets_to_pending_and_can_be_moderated_again(self, client):
+        create_test_user("user_edge5@test.com", "User Edge 5")
+        create_test_user("mod_edge5@test.com", "Mod Edge 5", models.UserRole.MODERATOR)
+
+        user_token = get_auth_token(client, "user_edge5@test.com")
+        create_response = client.post(
+            "/blog/",
+            json={"title": "Bad Blog", "body": "Original bad content"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        blog_id = create_response.json()["id"]
+
+        mod_token = get_auth_token(client, "mod_edge5@test.com")
+        client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "rejected", "comment": "Need improvement"},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+
+        client.put(
+            f"/blog/{blog_id}",
+            json={"title": "Improved Blog", "body": "Much better content now"},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+
+        moderate_response = client.post(
+            f"/moderation/blog/{blog_id}",
+            json={"decision": "approved", "comment": "Now it's good"},
+            headers={"Authorization": f"Bearer {mod_token}"}
+        )
+        assert moderate_response.status_code == 200
+        assert moderate_response.json()["decision"] == "approved"
+
+        blog_response = client.get(
+            f"/blog/{blog_id}",
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        assert blog_response.json()["status"] == "approved"

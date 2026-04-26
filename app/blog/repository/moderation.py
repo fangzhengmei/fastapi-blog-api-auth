@@ -23,6 +23,12 @@ def moderate_blog(
             detail=f"Blog is not pending moderation. Current status: {blog.status.value}"
         )
 
+    if blog.user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot moderate your own blog post"
+        )
+
     if request.decision == schemas.ModerationDecision.APPROVED:
         blog.status = models.BlogStatus.APPROVED
     else:
