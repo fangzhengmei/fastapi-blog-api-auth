@@ -42,7 +42,6 @@ def unlike_blog(blog_id: int, user_id: int, db: Session):
     
     db.delete(existing_like)
     db.commit()
-    return {'detail': 'Like removed successfully'}
 
 
 def get_like_count(blog_id: int, db: Session):
