@@ -1,5 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel
+from datetime import datetime
 
 
 class BlogBase(BaseModel):
@@ -23,9 +24,12 @@ class ShowUser(BaseModel):
         orm_mode = True
 
 class ShowBlog(BaseModel):
+    id: int
     title: str
-    body:str
+    body: str
     creator: ShowUser
+    likes_count: int = 0
+    is_liked: bool = False
 
     class Config():
         orm_mode = True
@@ -43,3 +47,21 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+
+class LikeBase(BaseModel):
+    pass
+
+
+class LikeCreate(LikeBase):
+    blog_id: int
+
+
+class LikeResponse(BaseModel):
+    id: int
+    user_id: int
+    blog_id: int
+    created_at: datetime
+
+    class Config():
+        orm_mode = True
