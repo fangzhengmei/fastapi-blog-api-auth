@@ -673,3 +673,66 @@ class TestUserProfileFollowCounts:
         assert data["email"] is None
         assert "followers_count" in data
         assert "following_count" in data
+    
+    def test_expired_token_treated_as_guest(self):
+        expired_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMUBleGFtcGxlLmNvbSIsImV4cCI6MH0.invalid_signature"
+        response = client.get(
+            f"/user/{self.user2_id}",
+            headers={"Authorization": f"Bearer {expired_token}"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["id"] == self.user2_id
+        assert data["name"] == "User Two"
+        assert data["email"] is None
+    
+    def test_invalid_token_format_treated_as_guest(self):
+        invalid_token = "this-is-not-a-valid-jwt-token"
+        response = client.get(
+            f"/user/{self.user2_id}",
+            headers={"Authorization": f"Bearer {invalid_token}"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["id"] == self.user2_id
+        assert data["name"] == "User Two"
+        assert data["email"] is None
+    
+    def test_malformed_authorization_header_treated_as_guest(self):
+        response = client.get(
+            f"/user/{self.user2_id}",
+            headers={"Authorization": "Basic some_token"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["id"] == self.user2_id
+        assert data["name"] == "User Two"
+        assert data["email"] is None
+    
+    def test_invalid_signature_token_treated_as_guest(self):
+        invalid_sig_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMUBleGFtcGxlLmNvbSJ9.wrong_signature"
+        response = client.get(
+            f"/user/{self.user2_id}",
+            headers={"Authorization": f"Bearer {invalid_sig_token}"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["id"] == self.user2_id
+        assert data["name"] == "User Two"
+        assert data["email"] is None
+    
+    def test_empty_bearer_token_treated_as_guest(self):
+        response = client.get(
+            f"/user/{self.user2_id}",
+            headers={"Authorization": "Bearer "}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["id"] == self.user2_id
+        assert data["name"] == "User Two"
+        assert data["email"] is None
